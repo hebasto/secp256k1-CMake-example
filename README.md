@@ -1,7 +1,7 @@
 This is a DEMO repository with examples of using an installed [`secp256k1`](https://github.com/bitcoin-core/secp256k1)
 library with [CMake](https://github.com/bitcoin-core/secp256k1/pull/1113).
 
-Source code borrowed from https://github.com/bitcoin-core/secp256k1/tree/master/examples directly.
+Source code is borrowed from https://github.com/bitcoin-core/secp256k1/tree/master/examples directly.
 
 To build a binary, use commands as follows:
 ```sh
