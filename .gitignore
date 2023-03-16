@@ -1,0 +1,4 @@
+### CMake
+/CMakeUserPresets.json
+# Default CMake build directory.
+/build
