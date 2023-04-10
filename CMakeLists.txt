@@ -23,3 +23,8 @@ target_link_libraries(${PROJECT_NAME}-static PRIVATE
   secp256k1_static
   $<$<PLATFORM_ID:Windows>:bcrypt>
 )
+
+include(GNUInstallDirs)
+install(TARGETS ${PROJECT_NAME} ${PROJECT_NAME}-static
+  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+)
