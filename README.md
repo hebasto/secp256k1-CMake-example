@@ -11,7 +11,7 @@ There are two options to use the `secp256k1` library in a your project:
 
 ## Installed library
 
-Use the "main" branch of this repository.
+Switch to the ["main"](https://github.com/hebasto/secp256k1-CMake-example/tree/main) branch of this repository.
 
 
 To build a binary, use commands as follows:
@@ -29,7 +29,7 @@ cmake --build build
 
 ## Library in a subtree
 
-Use the "subtree" branch of this repository.
+Switch to the ["subtree"](https://github.com/hebasto/secp256k1-CMake-example/tree/subtree) branch of this repository.
 
 ```sh
 dir=$(mktemp -d)
