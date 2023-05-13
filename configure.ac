@@ -5,7 +5,7 @@ AC_PREREQ([2.60])
 # backwards-compatible and therefore at most increase the minor version.
 define(_PKG_VERSION_MAJOR, 0)
 define(_PKG_VERSION_MINOR, 3)
-define(_PKG_VERSION_PATCH, 1)
+define(_PKG_VERSION_PATCH, 2)
 define(_PKG_VERSION_IS_RELEASE, false)
 
 # The library version is based on libtool versioning of the ABI. The set of
@@ -14,7 +14,7 @@ define(_PKG_VERSION_IS_RELEASE, false)
 # All changes in experimental modules are treated as if they don't affect the
 # interface and therefore only increase the revision.
 define(_LIB_VERSION_CURRENT, 2)
-define(_LIB_VERSION_REVISION, 1)
+define(_LIB_VERSION_REVISION, 2)
 define(_LIB_VERSION_AGE, 0)
 
 AC_INIT([libsecp256k1],m4_join([.], _PKG_VERSION_MAJOR, _PKG_VERSION_MINOR, _PKG_VERSION_PATCH)m4_if(_PKG_VERSION_IS_RELEASE, [true], [], [-dev]),[https://github.com/bitcoin-core/secp256k1/issues],[libsecp256k1],[https://github.com/bitcoin-core/secp256k1])
@@ -29,6 +29,11 @@ AM_INIT_AUTOMAKE([1.11.2 foreign subdir-objects])
 # Make the compilation flags quiet unless V=1 is used.
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 
+if test "${CFLAGS+set}" = "set"; then
+  CFLAGS_overridden=yes
+else
+  CFLAGS_overridden=no
+fi
 AC_PROG_CC
 AM_PROG_AS
 AM_PROG_AR
@@ -88,11 +93,14 @@ esac
 AC_DEFUN([SECP_TRY_APPEND_DEFAULT_CFLAGS], [
     # GCC and compatible (incl. clang)
     if test "x$GCC" = "xyes"; then
-      # Try to append -Werror=unknown-warning-option to CFLAGS temporarily. Otherwise clang will
-      # not error out if it gets unknown warning flags and the checks here will always succeed
-      # no matter if clang knows the flag or not.
+      # Try to append -Werror to CFLAGS temporarily. Otherwise checks for some unsupported
+      # flags will succeed.
+      # Note that failure to append -Werror does not necessarily mean that -Werror is not
+      # supported. The compiler may already be warning about something unrelated, for example
+      # about some path issue. If that is the case, -Werror cannot be used because all
+      # of those warnings would be turned into errors.
       SECP_TRY_APPEND_DEFAULT_CFLAGS_saved_CFLAGS="$CFLAGS"
-      SECP_TRY_APPEND_CFLAGS([-Werror=unknown-warning-option], CFLAGS)
+      SECP_TRY_APPEND_CFLAGS([-Werror], CFLAGS)
 
       SECP_TRY_APPEND_CFLAGS([-std=c89 -pedantic -Wno-long-long -Wnested-externs -Wshadow -Wstrict-prototypes -Wundef], $1) # GCC >= 3.0, -Wlong-long is implied by -pedantic.
       SECP_TRY_APPEND_CFLAGS([-Wno-overlength-strings], $1) # GCC >= 4.2, -Woverlength-strings is implied by -pedantic.
@@ -114,7 +122,6 @@ AC_DEFUN([SECP_TRY_APPEND_DEFAULT_CFLAGS], [
     # Note that "/opt" and "-opt" are equivalent for MSVC; we use "-opt" because "/opt" looks like a path.
     if test x"$GCC" != x"yes" && test x"$build_windows" = x"yes"; then
       SECP_TRY_APPEND_CFLAGS([-W2 -wd4146], $1) # Moderate warning level, disable warning C4146 "unary minus operator applied to unsigned type, result still unsigned"
-      SECP_TRY_APPEND_CFLAGS([-external:anglebrackets -external:W0], $1) # Suppress warnings from #include <...> files
       # We pass -ignore:4217 to the MSVC linker to suppress warning 4217 when
       # importing variables from a statically linked secp256k1.
       # (See the libtool manual, section "Windows DLLs" for background.)
@@ -190,8 +197,8 @@ AC_ARG_ENABLE(external_default_callbacks,
 #  *  and auto (the default).
 AC_ARG_WITH([test-override-wide-multiply], [] ,[set_widemul=$withval], [set_widemul=auto])
 
-AC_ARG_WITH([asm], [AS_HELP_STRING([--with-asm=x86_64|arm|no|auto],
-[assembly optimizations to use (experimental: arm) [default=auto]])],[req_asm=$withval], [req_asm=auto])
+AC_ARG_WITH([asm], [AS_HELP_STRING([--with-asm=x86_64|arm32|no|auto],
+[assembly optimizations to use (experimental: arm32) [default=auto]])],[req_asm=$withval], [req_asm=auto])
 
 AC_ARG_WITH([ecmult-window], [AS_HELP_STRING([--with-ecmult-window=SIZE|auto],
 [window size for ecmult precomputation for verification, specified as integer in range [2..24].]
@@ -241,6 +248,12 @@ fi
 if test x"$enable_coverage" = x"yes"; then
     SECP_CONFIG_DEFINES="$SECP_CONFIG_DEFINES -DCOVERAGE=1"
     SECP_CFLAGS="-O0 --coverage $SECP_CFLAGS"
+    # If coverage is enabled, and the user has not overridden CFLAGS,
+    # override Autoconf's value "-g -O2" with "-g". Otherwise we'd end up
+    # with "-O0 --coverage -g -O2".
+    if test "$CFLAGS_overridden" = "no"; then
+      CFLAGS="-g"
+    fi
     LDFLAGS="--coverage $LDFLAGS"
 else
     # Most likely the CFLAGS already contain -O2 because that is autoconf's default.
@@ -250,8 +263,8 @@ else
 fi
 
 if test x"$req_asm" = x"auto"; then
-  SECP_64BIT_ASM_CHECK
-  if test x"$has_64bit_asm" = x"yes"; then
+  SECP_X86_64_ASM_CHECK
+  if test x"$has_x86_64_asm" = x"yes"; then
     set_asm=x86_64
   fi
   if test x"$set_asm" = x; then
@@ -261,12 +274,16 @@ else
   set_asm=$req_asm
   case $set_asm in
   x86_64)
-    SECP_64BIT_ASM_CHECK
-    if test x"$has_64bit_asm" != x"yes"; then
+    SECP_X86_64_ASM_CHECK
+    if test x"$has_x86_64_asm" != x"yes"; then
       AC_MSG_ERROR([x86_64 assembly optimization requested but not available])
     fi
     ;;
-  arm)
+  arm32)
+    SECP_ARM32_ASM_CHECK
+    if test x"$has_arm32_asm" != x"yes"; then
+      AC_MSG_ERROR([ARM32 assembly optimization requested but not available])
+    fi
     ;;
   no)
     ;;
@@ -283,7 +300,7 @@ case $set_asm in
 x86_64)
   SECP_CONFIG_DEFINES="$SECP_CONFIG_DEFINES -DUSE_ASM_X86_64=1"
   ;;
-arm)
+arm32)
   enable_external_asm=yes
   ;;
 no)
@@ -400,8 +417,8 @@ if test x"$enable_experimental" = x"yes"; then
   AC_MSG_NOTICE([Experimental features do not have stable APIs or properties, and may not be safe for production use.])
   AC_MSG_NOTICE([******])
 else
-  if test x"$set_asm" = x"arm"; then
-    AC_MSG_ERROR([ARM assembly optimization is experimental. Use --enable-experimental to allow.])
+  if test x"$set_asm" = x"arm32"; then
+    AC_MSG_ERROR([ARM32 assembly optimization is experimental. Use --enable-experimental to allow.])
   fi
 fi
 
@@ -423,7 +440,7 @@ AM_CONDITIONAL([ENABLE_MODULE_RECOVERY], [test x"$enable_module_recovery" = x"ye
 AM_CONDITIONAL([ENABLE_MODULE_EXTRAKEYS], [test x"$enable_module_extrakeys" = x"yes"])
 AM_CONDITIONAL([ENABLE_MODULE_SCHNORRSIG], [test x"$enable_module_schnorrsig" = x"yes"])
 AM_CONDITIONAL([USE_EXTERNAL_ASM], [test x"$enable_external_asm" = x"yes"])
-AM_CONDITIONAL([USE_ASM_ARM], [test x"$set_asm" = x"arm"])
+AM_CONDITIONAL([USE_ASM_ARM], [test x"$set_asm" = x"arm32"])
 AM_CONDITIONAL([BUILD_WINDOWS], [test "$build_windows" = "yes"])
 AC_SUBST(LIB_VERSION_CURRENT, _LIB_VERSION_CURRENT)
 AC_SUBST(LIB_VERSION_REVISION, _LIB_VERSION_REVISION)
