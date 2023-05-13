@@ -2,6 +2,7 @@
 #define SECP256K1_INT128_STRUCT_IMPL_H
 
 #include "int128.h"
+#include "util.h"
 
 #if defined(_MSC_VER) && (defined(_M_X64) || defined(_M_ARM64)) /* MSVC */
 #    include <intrin.h>
@@ -193,7 +194,7 @@ static SECP256K1_INLINE int secp256k1_i128_check_pow2(const secp256k1_int128 *r,
     VERIFY_CHECK(n < 127);
     VERIFY_CHECK(sign == 1 || sign == -1);
     return n >= 64 ? r->hi == (uint64_t)sign << (n - 64) && r->lo == 0
-                   : r->hi == (uint64_t)((sign - 1) >> 1) && r->lo == (uint64_t)sign << n;
+                   : r->hi == (uint64_t)(sign >> 1) && r->lo == (uint64_t)sign << n;
 }
 
 #endif
