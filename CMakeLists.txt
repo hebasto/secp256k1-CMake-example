@@ -1,15 +1,19 @@
-cmake_minimum_required(VERSION 3.14)
+cmake_minimum_required(VERSION 3.14..3.22)
 
 project(secp256k1-example LANGUAGES C)
 
-include(FetchContent)
+set(SECP256K1_DISABLE_SHARED ON CACHE INTERNAL "")
+set(SECP256K1_BUILD_BENCHMARK OFF CACHE INTERNAL "")
+set(SECP256K1_BUILD_TESTS OFF CACHE INTERNAL "")
+set(SECP256K1_BUILD_EXHAUSTIVE_TESTS OFF CACHE INTERNAL "")
+set(SECP256K1_BUILD_CTIME_TESTS OFF CACHE INTERNAL "")
 
+include(FetchContent)
 FetchContent_Declare(
   libsecp256k1
   GIT_REPOSITORY https://github.com/bitcoin-core/secp256k1
   GIT_TAG        c545fdc374964424683d9dac31a828adedabe860
 )
-
 FetchContent_MakeAvailable(libsecp256k1)
 
 add_executable(${PROJECT_NAME} src/ecdsa.c)
