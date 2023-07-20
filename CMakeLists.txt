@@ -1,11 +1,16 @@
-cmake_minimum_required(VERSION 3.13)
+cmake_minimum_required(VERSION 3.14)
 
 project(secp256k1-example LANGUAGES C)
 
-set(SECP256K1_DISABLE_SHARED ON)
-set(SECP256K1_ENABLE_MODULE_RECOVERY ON)
-set(SECP256K1_BUILD_BENCHMARK OFF)
-add_subdirectory(src/secp256k1)
+include(FetchContent)
+
+FetchContent_Declare(
+  libsecp256k1
+  GIT_REPOSITORY https://github.com/bitcoin-core/secp256k1
+  GIT_TAG        c545fdc374964424683d9dac31a828adedabe860
+)
+
+FetchContent_MakeAvailable(libsecp256k1)
 
 add_executable(${PROJECT_NAME} src/ecdsa.c)
 target_link_libraries(${PROJECT_NAME}
