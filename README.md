@@ -1,12 +1,14 @@
-This is a DEMO repository with examples of using an installed [`secp256k1`](https://github.com/bitcoin-core/secp256k1)
-library with [CMake](https://github.com/bitcoin-core/secp256k1/pull/1113).
+This is a DEMO repository with examples of using the [`libsecp256k1`](https://github.com/bitcoin-core/secp256k1)
+library in downstream projects with CMake.
 
 Source code is borrowed from https://github.com/bitcoin-core/secp256k1/tree/master/examples directly.
 
+---
 
-There are two options to use the `secp256k1` library in a your project:
-- install it into your system
-- have its source code as a subtree in your project's source tree
+There are multiple options to use the `libsecp256k1` library in your project:
+- install it into your system,
+- have its source code as a subtree in your project's source tree,
+- use the `FetchContent` module.
 
 
 ## Installed library
@@ -16,14 +18,14 @@ Switch to the ["main"](https://github.com/hebasto/secp256k1-CMake-example/tree/m
 
 To build a binary, use commands as follows:
 ```sh
-cmake -S . -B build
+cmake -B build
 cmake --build build
 ```
 
 If the `secp256k1` library has been installed in a non-standard path, add its installation prefix to `CMAKE_PREFIX_PATH`.
 For example:
 ```sh
-cmake -S . -B build -DCMAKE_PREFIX_PATH=/home/username/custom_lib
+cmake -B build -DCMAKE_PREFIX_PATH=/home/username/custom_lib
 cmake --build build
 ```
 
@@ -33,7 +35,19 @@ Switch to the ["subtree"](https://github.com/hebasto/secp256k1-CMake-example/tre
 
 ```sh
 dir=$(mktemp -d)
-cmake -S . -B build -DCMAKE_INSTALL_PREFIX=$dir
+cmake -B build -DCMAKE_INSTALL_PREFIX=$dir
+cmake --build build --target install
+tree $dir
+$dir/bin/secp256k1-example
+```
+
+## Using `FetchContent` module
+
+Switch to the ["fetch"](https://github.com/hebasto/secp256k1-CMake-example/tree/fetch) branch of this repository.
+
+```sh
+dir=$(mktemp -d)
+cmake -B build -DCMAKE_INSTALL_PREFIX=$dir
 cmake --build build --target install
 tree $dir
 $dir/bin/secp256k1-example
