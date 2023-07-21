@@ -314,13 +314,17 @@ static int secp256k1_gej_eq_var(const secp256k1_gej *a, const secp256k1_gej *b) 
 }
 
 static int secp256k1_gej_eq_x_var(const secp256k1_fe *x, const secp256k1_gej *a) {
-    secp256k1_fe r, r2;
+    secp256k1_fe r;
+
+#ifdef VERIFY
     secp256k1_fe_verify(x);
+    VERIFY_CHECK(a->x.magnitude <= 31);
     secp256k1_gej_verify(a);
     VERIFY_CHECK(!a->infinity);
+#endif
+
     secp256k1_fe_sqr(&r, &a->z); secp256k1_fe_mul(&r, &r, x);
-    r2 = a->x; secp256k1_fe_normalize_weak(&r2);
-    return secp256k1_fe_equal_var(&r, &r2);
+    return secp256k1_fe_equal_var(&r, &a->x);
 }
 
 static void secp256k1_gej_neg(secp256k1_gej *r, const secp256k1_gej *a) {
@@ -349,7 +353,6 @@ static int secp256k1_ge_is_valid_var(const secp256k1_ge *a) {
     secp256k1_fe_sqr(&y2, &a->y);
     secp256k1_fe_sqr(&x3, &a->x); secp256k1_fe_mul(&x3, &x3, &a->x);
     secp256k1_fe_add_int(&x3, SECP256K1_B);
-    secp256k1_fe_normalize_weak(&x3);
     return secp256k1_fe_equal_var(&y2, &x3);
 }
 
@@ -821,6 +824,34 @@ static int secp256k1_ge_is_in_correct_subgroup(const secp256k1_ge* ge) {
     /* The real secp256k1 group has cofactor 1, so the subgroup is the entire curve. */
     return 1;
 #endif
+}
+
+static int secp256k1_ge_x_on_curve_var(const secp256k1_fe *x) {
+    secp256k1_fe c;
+    secp256k1_fe_sqr(&c, x);
+    secp256k1_fe_mul(&c, &c, x);
+    secp256k1_fe_add_int(&c, SECP256K1_B);
+    return secp256k1_fe_is_square_var(&c);
+}
+
+static int secp256k1_ge_x_frac_on_curve_var(const secp256k1_fe *xn, const secp256k1_fe *xd) {
+    /* We want to determine whether (xn/xd) is on the curve.
+     *
+     * (xn/xd)^3 + 7 is square <=> xd*xn^3 + 7*xd^4 is square (multiplying by xd^4, a square).
+     */
+     secp256k1_fe r, t;
+#ifdef VERIFY
+     VERIFY_CHECK(!secp256k1_fe_normalizes_to_zero_var(xd));
+#endif
+     secp256k1_fe_mul(&r, xd, xn); /* r = xd*xn */
+     secp256k1_fe_sqr(&t, xn); /* t = xn^2 */
+     secp256k1_fe_mul(&r, &r, &t); /* r = xd*xn^3 */
+     secp256k1_fe_sqr(&t, xd); /* t = xd^2 */
+     secp256k1_fe_sqr(&t, &t); /* t = xd^4 */
+     VERIFY_CHECK(SECP256K1_B <= 31);
+     secp256k1_fe_mul_int(&t, SECP256K1_B); /* t = 7*xd^4 */
+     secp256k1_fe_add(&r, &t); /* r = xd*xn^3 + 7*xd^4 */
+     return secp256k1_fe_is_square_var(&r);
 }
 
 #endif /* SECP256K1_GROUP_IMPL_H */
