@@ -38,7 +38,7 @@ dir=$(mktemp -d)
 cmake -B build -DCMAKE_INSTALL_PREFIX=$dir
 cmake --build build --target install
 tree $dir
-$dir/bin/secp256k1-example
+$dir/bin/example
 ```
 
 ## Using `FetchContent` module
@@ -50,5 +50,5 @@ dir=$(mktemp -d)
 cmake -B build -DCMAKE_INSTALL_PREFIX=$dir
 cmake --build build --target install
 tree $dir
-$dir/bin/secp256k1-example
+$dir/bin/example
 ```
